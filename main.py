@@ -11,8 +11,8 @@ from neumann_network import *
 
 
 parser = argparse.ArgumentParser()
-parser.add_argument('--datadir', required=True, default='data', help='directory to image dataset')
-parser.add_argument('--ckptdir', required=False, default='out', help='output dir')
+parser.add_argument('--datadir', required=True, default='../iterative_reconstruction_networks/data/img_align_celeba', help='directory to image dataset')
+parser.add_argument('--ckptdir', required=False, default='/output', help='output dir')
 parser.add_argument('--epochs', type=int, default=100, dest='epochs', help='Number of epochs to train')
 parser.add_argument('--blocks', type=int, default=6, dest='blocks', help='Number of blocks (iterations)')
 parser.add_argument('--bs', type=int, default=10, help='Batch size')

@@ -1,7 +1,7 @@
 import torch
 import numpy as np
-from torch_radon import Radon, RadonFanbeam
-from torch_radon.solvers import Landweber
+#from torch_radon import Radon, RadonFanbeam
+#from torch_radon.solvers import Landweber
 
 
 class Operators():

@@ -3,6 +3,7 @@ import os
 import sys
 
 import torch
+print(torch.__version__)
 import torchvision.transforms as transforms
 import torchvision.datasets as dset
 
@@ -11,8 +12,8 @@ from neumann_network import *
 
 
 parser = argparse.ArgumentParser()
-parser.add_argument('--datadir', required=True, default='../iterative_reconstruction_networks/data/img_align_celeba', help='directory to image dataset')
-parser.add_argument('--ckptdir', required=False, default='/output', help='output dir')
+parser.add_argument('--datadir', required=True, default='data', help='directory to image dataset')
+parser.add_argument('--ckptdir', required=False, default='/output/', help='output dir')
 parser.add_argument('--epochs', type=int, default=100, dest='epochs', help='Number of epochs to train')
 parser.add_argument('--blocks', type=int, default=6, dest='blocks', help='Number of blocks (iterations)')
 parser.add_argument('--bs', type=int, default=10, help='Batch size')
@@ -56,15 +57,15 @@ except OSError:
 args.det_size = args.size if args.det_size == None else args.det_size
 
 
-try:
-    if args.net == 'GD':
-        m = GradientDescentNet(args=args, dataloader=dataloader, device=device)
-    elif args.net == 'NN':
-        m = NeumannNet(args=args, dataloader=dataloader, device=device)
-    m.train()
-except KeyboardInterrupt:
-    print('Interrupted')
-    try:
-        sys.exit(0)
-    except SystemExit:
-        os._exit(0)
+# try:
+#     if args.net == 'GD':
+#         m = GradientDescentNet(args=args, dataloader=dataloader, device=device)
+#     elif args.net == 'NN':
+#         m = NeumannNet(args=args, dataloader=dataloader, device=device)
+#     m.train()
+# except KeyboardInterrupt:
+#     print('Interrupted')
+#     try:
+#         sys.exit(0)
+#     except SystemExit:
+#         os._exit(0)

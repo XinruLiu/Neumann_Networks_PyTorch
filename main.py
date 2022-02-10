@@ -1,7 +1,7 @@
 import argparse
 import os
 import sys
-
+sys.path.append('C:/Users/Xinru/Documents/GitHub/Neumann_Networks_PyTorch/')
 import torch
 print(torch.__version__)
 import torchvision.transforms as transforms
@@ -44,7 +44,7 @@ dataset = dset.ImageFolder(root=args.datadir,
 assert dataset
 print(f"Dataset contains {len(dataset)} images.")
 dataloader = torch.utils.data.DataLoader(dataset, shuffle=True, batch_size=args.bs, num_workers=4)
-
+print(dataloader[0])
 
 try:
     if not os.path.exists(os.path.join(args.ckptdir, 'ckpt')):

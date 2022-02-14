@@ -5,7 +5,7 @@ import torch.optim as optim
 import torchvision.utils as vutils
 
 from model import *
-from utils import *
+#from utils import *
 
 
 class GradientDescentNet():
@@ -13,14 +13,15 @@ class GradientDescentNet():
         self.args = args
         self.dataloader = dataloader
         self.device = device
+        self.sample_rate = args.rate
         print(f'Undersample rate is: {args.rate}')
         
-        if args.beam == 'parallel':
-            self.opr = Operators(args.size, args.angles, args.rate, device=device)
-        elif args.beam == 'fan':
-            self.opr = Operators(args.size, args.angles, args.rate, device=device, beam=args.beam, det_size=args.det_size)
-        else:
-            raise Exception('projection beam type wrong!')
+        # if args.beam == 'parallel':
+        #     self.opr = Operators(args.size, args.angles, args.rate, device=device)
+        # elif args.beam == 'fan':
+        #     self.opr = Operators(args.size, args.angles, args.rate, device=device, beam=args.beam, det_size=args.det_size)
+        # else:
+        #     raise Exception('projection beam type wrong!')
         
         self.resnet = nn.DataParallel(nblock_resnet(n_residual_blocks=2).to(device))
         self.init_network()
@@ -30,7 +31,7 @@ class GradientDescentNet():
         if self.args.load < 0:
             self.resnet.apply(self.init_weights)
             self.start_epoch = 0
-            self.eta = self.args.eta if self.args.eta != None else self.opr.estimate_eta()  #.requires_grad_() # uncomment to train eta
+            self.eta = self.args.eta #if self.args.eta != None else self.opr.estimate_eta()  #.requires_grad_() # uncomment to train eta
             print(f'initial eta estimate: {self.eta:.6f}')
         else:
             self.load_checkpoints()
@@ -56,7 +57,8 @@ class GradientDescentNet():
         
     
     def run_block(self, beta):
-        linear_component = beta - self.eta*self.opr.forward_gramian(beta) + self.network_input
+        #linear_component = beta - self.eta*self.opr.forward_gramian(beta) + self.network_input
+        linear_component = beta - self.eta*beta + self.network_input
         regulariser = self.resnet(beta)
         learned_component = -regulariser*self.eta
         beta = linear_component + learned_component
@@ -78,9 +80,11 @@ class GradientDescentNet():
                 self.resnet.zero_grad()
                 
                 true_beta = data[0].to(self.device)  # Ground Truth Reconstruction 0~1
-                true_sinogram = self.opr.forward_radon(true_beta)  # 0~1
-                
-                self.network_input = self.opr.forward_adjoint(self.opr.undersample_model(true_sinogram))
+                #true_sinogram = self.opr.forward_radon(true_beta)  # 0~1
+                true_sinogram = true_beta # Observed y after forward mapping. Test case to have the identity matrix
+
+                #self.network_input = self.opr.forward_adjoint(self.opr.undersample_model(true_sinogram))
+                self.network_input = true_beta#[:,:,::self.sample_rate,:]
                 self.network_input *= self.eta
                 beta = self.network_input
 
@@ -103,19 +107,20 @@ class GradientDescentNet():
             self.scheduler.step()  # update learning rate, disable this if no exp decay
             
             
-    def test(self, true_beta):
-        '''
-            Test Phase (for single test image).
-        '''
-        true_sinogram = self.opr.forward_radon(true_beta)  # 0~1
-        self.network_input = self.opr.forward_adjoint(self.opr.undersample_model(true_sinogram.to(self.device)))
-        self.network_input *= self.eta
-        beta = self.network_input
+    # def test(self, true_beta):
+    #     '''
+    #         Test Phase (for single test image).
+    #     '''
+    #     #true_sinogram = self.opr.forward_radon(true_beta)  # 0~1
+    #     true_sinogram = true_beta
+    #     self.network_input = self.opr.forward_adjoint(self.opr.undersample_model(true_sinogram.to(self.device)))
+    #     self.network_input *= self.eta
+    #     beta = self.network_input
 
-        for _ in range(self.args.blocks):  # run iterations
-            beta = self.run_block(beta)
+    #     for _ in range(self.args.blocks):  # run iterations
+    #         beta = self.run_block(beta)
         
-        return beta.detach()
+    #     return beta.detach()
         
             
     def log(self, epoch, i):

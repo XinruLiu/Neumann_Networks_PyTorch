@@ -7,6 +7,7 @@ print(torch.__version__)
 import torchvision.transforms as transforms
 import torchvision.datasets as dset
 
+
 from gradient_descent_network import *
 from neumann_network import *
 
@@ -43,9 +44,9 @@ dataset = dset.ImageFolder(root=args.datadir,
                             ]))
 assert dataset
 print(f"Dataset contains {len(dataset)} images.")
-dataloader = torch.utils.data.DataLoader(dataset, shuffle=True, batch_size=args.bs, num_workers=4)
-print(dataloader[0])
-
+#print(dataset[10][1])
+dataloader = torch.utils.data.DataLoader(dataset, shuffle=True, batch_size=args.bs, num_workers=0)
+#print([d[0].size() for i, d in enumerate(dataloader)])
 try:
     if not os.path.exists(os.path.join(args.ckptdir, 'ckpt')):
         os.makedirs(os.path.join(args.ckptdir, 'ckpt'))
@@ -57,15 +58,15 @@ except OSError:
 args.det_size = args.size if args.det_size == None else args.det_size
 
 
-# try:
-#     if args.net == 'GD':
-#         m = GradientDescentNet(args=args, dataloader=dataloader, device=device)
-#     elif args.net == 'NN':
-#         m = NeumannNet(args=args, dataloader=dataloader, device=device)
-#     m.train()
-# except KeyboardInterrupt:
-#     print('Interrupted')
-#     try:
-#         sys.exit(0)
-#     except SystemExit:
-#         os._exit(0)
+try:
+    if args.net == 'GD':
+        m = GradientDescentNet(args=args, dataloader=dataloader, device=device)
+    elif args.net == 'NN':
+        m = NeumannNet(args=args, dataloader=dataloader, device=device)
+    m.train()
+except KeyboardInterrupt:
+    print('Interrupted')
+    try:
+        sys.exit(0)
+    except SystemExit:
+         os._exit(0)

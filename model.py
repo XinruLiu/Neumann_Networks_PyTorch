@@ -5,7 +5,7 @@ import torch.nn as nn
 class nblock_resnet(nn.Module):
     def __init__(self, inc=1, onc=1, n_residual_blocks=2):
         super(nblock_resnet, self).__init__()
-        n_interm_c = 128
+        n_interm_c = 64
         
         init_layer = nn.Conv2d(inc, n_interm_c, 1, 1, 0)
         model = [init_layer]

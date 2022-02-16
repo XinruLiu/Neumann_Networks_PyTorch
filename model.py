@@ -4,8 +4,8 @@ import torch.nn as nn
 
 class nblock_resnet(nn.Module):
     def __init__(self, inc=1, onc=1, n_residual_blocks=2):
-        super(nblock_resnet, self).__init__()
-        n_interm_c = 64
+        super(nblock_resnet, self).__init__() #return a proxy object that delegates method calls to parent class
+        n_interm_c = 128
         
         init_layer = nn.Conv2d(inc, n_interm_c, 1, 1, 0)
         model = [init_layer]
@@ -38,7 +38,7 @@ class residual_block(nn.Module):
         self.model = nn.Sequential(
             nn.Conv2d(nc, nc, 3, 1, 1),
             nn.BatchNorm2d(nc),
-            nn.LeakyReLU(0.1, inplace=True),
+            nn.LeakyReLU(0.1, inplace=True), #small slope for negative values instead of a flat slope, popular when suffering from sparse gradients.
             nn.Conv2d(nc, nc, 3, 1, 1),
             nn.BatchNorm2d(nc),
             nn.LeakyReLU(0.1, inplace=True)

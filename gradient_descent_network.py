@@ -5,8 +5,11 @@ import torch.optim as optim
 import torchvision.utils as vutils
 
 from model import *
-from operator import LinearOperator
-from operator import OperatorPlusNoise
+from operator import *
+#from operator import LinearOperator
+#from operator import OperatorPlusNoise
+
+#from operator import LinearOperator
 #from utils import *
 
 
@@ -19,8 +22,8 @@ class GradientDescentNet():
         self.noise_sigma = args.noise_sigma
         print(f'Undersample rate is: {args.rate}')
 
-        self.linear_opr = LinearOperator()
-        self.noise_opr = OperatorPlusNoise()
+        ##self.linear_opr = LinearOperator()
+        #self.noise_opr = OperatorPlusNoise()
         # if args.beam == 'parallel':
         #     self.opr = Operators(args.size, args.angles, args.rate, device=device)
         # elif args.beam == 'fan':
@@ -30,7 +33,6 @@ class GradientDescentNet():
         
         self.resnet = nn.DataParallel(nblock_resnet(n_residual_blocks=2).to(device))
         self.init_network()
-        
         
     def init_network(self):
         if self.args.load < 0:
@@ -62,8 +64,8 @@ class GradientDescentNet():
         
     
     def run_block(self, beta):
-        linear_component = beta - self.eta*self.linear_opr.gramian(beta) + self.network_input
-        #linear_component = beta - self.eta*beta + self.network_input
+        #linear_component = beta - self.eta*LinearOperator.gramian(beta) + self.network_input
+        linear_component = beta - self.eta*beta + self.network_input
         regulariser = self.resnet(beta)
         learned_component = -regulariser*self.eta
         beta = linear_component + learned_component
@@ -85,12 +87,12 @@ class GradientDescentNet():
                 self.resnet.zero_grad()
                 
                 true_beta = data[0].to(self.device)  # Ground Truth Reconstruction 0~1
-                forward_opr = self.linear_opr(beta)
-                y_measurement = self.noise_opr(forward_opr, noise_sigma=self.noise_sigma).to(self.device)  # 0~1
+                #forward_opr = self.linear_opr(beta)
+                y_measurement = true_beta + self.noise_sigma * torch.randn_like(true_beta)  # 0~1
                 #true_sinogram = true_beta # Observed y after forward mapping. Test case to have the identity matrix
 
-                self.network_input = self.linear_opr.adjoint(y_measurement)
-                #self.network_input = true_beta#[:,:,::self.sample_rate,:]
+                #self.network_input = self.linear_opr.adjoint(y_measurement)
+                self.network_input = y_measurement#[:,:,::self.sample_rate,:]
                 self.network_input *= self.eta
                 beta = self.network_input
 

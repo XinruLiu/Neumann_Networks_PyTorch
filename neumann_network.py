@@ -5,7 +5,7 @@ import torch.optim as optim
 import torchvision.utils as vutils
 
 from model import *
-from utils import *
+#from utils import *
 
 
 class NeumannNet():
@@ -15,13 +15,13 @@ class NeumannNet():
         self.device = device
         print(f'Undersample rate is: {args.rate}')
         
-        if args.beam == 'parallel':
-            self.opr = Operators(args.size, args.angles, args.rate, device=device)
-        elif args.beam == 'fan':
-            self.opr = Operators(args.size, args.angles, args.rate, device=device, 
-                                 beam=args.beam, det_size=args.det_size, det_dist=(args.src_dist, args.det_dist))
-        else:
-            raise Exception('projection beam type undefined!')
+        # if args.beam == 'parallel':
+        #     self.opr = Operators(args.size, args.angles, args.rate, device=device)
+        # elif args.beam == 'fan':
+        #     self.opr = Operators(args.size, args.angles, args.rate, device=device, 
+        #                          beam=args.beam, det_size=args.det_size, det_dist=(args.src_dist, args.det_dist))
+        # else:
+        #     raise Exception('projection beam type undefined!')
         
         self.resnet = nn.DataParallel(nblock_resnet(n_residual_blocks=2).to(device))
         self.init_network()
@@ -31,7 +31,7 @@ class NeumannNet():
         if self.args.load < 0:
             self.resnet.apply(self.init_weights)
             self.start_epoch = 0
-            self.eta = self.args.eta if self.args.eta != None else self.opr.estimate_eta()  #.requires_grad_() # uncomment to train eta
+            self.eta = self.args.eta #if self.args.eta != None else self.opr.estimate_eta()  #.requires_grad_() # uncomment to train eta
             print(f'initial eta estimate: {self.eta:.6f}')
         else:
             self.load_checkpoints()
@@ -58,7 +58,8 @@ class NeumannNet():
     
     # compute A = (I - eta*X^T X - eta*R), the whole operator norm ||A|| should be <1.
     def run_block(self, beta):
-        linear_component = beta - self.eta*self.opr.forward_gramian(beta)  # I - eta*X^T X()
+        #linear_component = beta - self.eta*self.opr.forward_gramian(beta)  # I - eta*X^T X()
+        linear_component = beta - self.eta*beta
         regulariser = self.resnet(beta)  # R()
         learned_component = -regulariser*self.eta
         beta = linear_component + learned_component
@@ -79,13 +80,15 @@ class NeumannNet():
             for i, data in enumerate(self.dataloader):
                 self.resnet.zero_grad()
                 
-                true_beta = data[0].to(self.device)  # Ground Truth Reconstruction 0~1
-                true_sinogram = self.opr.forward_radon(true_beta)
+                true_beta = data[0].clone().to(self.device)  # Ground Truth Reconstruction 0~1
+                #true_sinogram = self.opr.forward_radon(true_beta)  # 0~1
+                true_sinogram = true_beta # Observed y after forward mapping. Test case to have the identity matrix
                 
-                self.network_input = self.opr.forward_adjoint(self.opr.undersample_model(true_sinogram))
+                #self.network_input = self.opr.forward_adjoint(self.opr.undersample_model(true_sinogram))
+                self.network_input = true_sinogram#[:,:,::self.sample_rate,:]
                 self.network_input *= self.eta
-                beta = self.network_input
-                self.neumann_sum = beta
+                beta = self.network_input.clone()
+                self.neumann_sum = beta.clone()
 
                 for _ in range(self.args.blocks):  # run iterations
                     beta = self.run_block(beta)
@@ -107,21 +110,21 @@ class NeumannNet():
             self.scheduler.step()  # update learning rate, disable this if no exp decay
             
     
-    def test(self, true_beta):
-        '''
-            Test Phase (for single test image).
-        '''
-        true_sinogram = self.opr.forward_radon(true_beta)  # 0~1
-        self.network_input = self.opr.forward_adjoint(self.opr.undersample_model(true_sinogram.to(self.device)))
-        self.network_input *= self.eta
-        beta = self.network_input
-        self.neumann_sum = beta
+    # def test(self, true_beta):
+    #     '''
+    #         Test Phase (for single test image).
+    #     '''
+    #     true_sinogram = self.opr.forward_radon(true_beta)  # 0~1
+    #     self.network_input = self.opr.forward_adjoint(self.opr.undersample_model(true_sinogram.to(self.device)))
+    #     self.network_input *= self.eta
+    #     beta = self.network_input
+    #     self.neumann_sum = beta
 
-        for _ in range(self.args.blocks):  # run iterations
-            beta = self.run_block(beta)
-            self.neumann_sum += beta
+    #     for _ in range(self.args.blocks):  # run iterations
+    #         beta = self.run_block(beta)
+    #         self.neumann_sum += beta
 
-        return self.neumann_sum.detach()
+    #     return self.neumann_sum.detach()
         
             
     def log(self, epoch, i):

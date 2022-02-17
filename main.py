@@ -1,4 +1,5 @@
 import argparse
+from email.policy import default
 import os
 import sys
 sys.path.append('C:/Users/Xinru/Documents/GitHub/Neumann_Networks_PyTorch/')
@@ -29,6 +30,7 @@ parser.add_argument('--beam', required=False, type=str, default='parallel', help
 parser.add_argument('--net', required=False, type=str, default='GD', help='GD: Unrolled Gradiant Descent; NN: Neumann Network')
 parser.add_argument('--rate', type=int, default=8, help='undersample rate')
 parser.add_argument('--load', dest='load', type=int, default=-1, help='Load model from a .pth file by epoch #')
+parser.add_argument('--noiseSigma', required=False, default=0.01, dest='noise_sigma', help = 'parameter to generate noise')
 args = parser.parse_args()
 
 
@@ -45,7 +47,7 @@ dataset = dset.ImageFolder(root=args.datadir,
 assert dataset
 print(f"Dataset contains {len(dataset)} images.")
 #print(dataset[10][1])
-dataloader = torch.utils.data.DataLoader(dataset, shuffle=True, batch_size=args.bs, num_workers=0)
+dataloader = torch.utils.data.DataLoader(dataset, shuffle=False, batch_size=args.bs, num_workers=0)
 #print([d[0].size() for i, d in enumerate(dataloader)])
 try:
     if not os.path.exists(os.path.join(args.ckptdir, 'ckpt')):

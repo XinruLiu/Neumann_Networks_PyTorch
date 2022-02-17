@@ -13,6 +13,7 @@ class NeumannNet():
         self.args = args
         self.dataloader = dataloader
         self.device = device
+        self.noise_sigma = args.noise_sigma
         print(f'Undersample rate is: {args.rate}')
         
         # if args.beam == 'parallel':
@@ -82,10 +83,12 @@ class NeumannNet():
                 
                 true_beta = data[0].clone().to(self.device)  # Ground Truth Reconstruction 0~1
                 #true_sinogram = self.opr.forward_radon(true_beta)  # 0~1
-                true_sinogram = true_beta # Observed y after forward mapping. Test case to have the identity matrix
+                y_measurement = true_beta + self.noise_sigma * torch.randn_like(true_beta)
+                #true_sinogram = true_beta # Observed y after forward mapping. Test case to have the identity matrix
                 
                 #self.network_input = self.opr.forward_adjoint(self.opr.undersample_model(true_sinogram))
-                self.network_input = true_sinogram#[:,:,::self.sample_rate,:]
+                #self.network_input = true_sinogram#[:,:,::self.sample_rate,:]
+                self.network_input = y_measurement
                 self.network_input *= self.eta
                 beta = self.network_input.clone()
                 self.neumann_sum = beta.clone()

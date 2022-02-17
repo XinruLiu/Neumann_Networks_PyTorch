@@ -5,6 +5,8 @@ import torch.optim as optim
 import torchvision.utils as vutils
 
 from model import *
+from operator import LinearOperator
+from operator import OperatorPlusNoise
 #from utils import *
 
 
@@ -14,8 +16,11 @@ class GradientDescentNet():
         self.dataloader = dataloader
         self.device = device
         self.sample_rate = args.rate
+        self.noise_sigma = args.noise_sigma
         print(f'Undersample rate is: {args.rate}')
-        
+
+        self.linear_opr = LinearOperator()
+        self.noise_opr = OperatorPlusNoise()
         # if args.beam == 'parallel':
         #     self.opr = Operators(args.size, args.angles, args.rate, device=device)
         # elif args.beam == 'fan':
@@ -57,8 +62,8 @@ class GradientDescentNet():
         
     
     def run_block(self, beta):
-        #linear_component = beta - self.eta*self.opr.forward_gramian(beta) + self.network_input
-        linear_component = beta - self.eta*beta + self.network_input
+        linear_component = beta - self.eta*self.linear_opr.gramian(beta) + self.network_input
+        #linear_component = beta - self.eta*beta + self.network_input
         regulariser = self.resnet(beta)
         learned_component = -regulariser*self.eta
         beta = linear_component + learned_component
@@ -80,11 +85,12 @@ class GradientDescentNet():
                 self.resnet.zero_grad()
                 
                 true_beta = data[0].to(self.device)  # Ground Truth Reconstruction 0~1
-                #true_sinogram = self.opr.forward_radon(true_beta)  # 0~1
-                true_sinogram = true_beta # Observed y after forward mapping. Test case to have the identity matrix
+                forward_opr = self.linear_opr(beta)
+                y_measurement = self.noise_opr(forward_opr, noise_sigma=self.noise_sigma).to(self.device)  # 0~1
+                #true_sinogram = true_beta # Observed y after forward mapping. Test case to have the identity matrix
 
-                #self.network_input = self.opr.forward_adjoint(self.opr.undersample_model(true_sinogram))
-                self.network_input = true_beta#[:,:,::self.sample_rate,:]
+                self.network_input = self.linear_opr.adjoint(y_measurement)
+                #self.network_input = true_beta#[:,:,::self.sample_rate,:]
                 self.network_input *= self.eta
                 beta = self.network_input
 

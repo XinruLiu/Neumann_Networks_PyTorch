@@ -28,6 +28,7 @@ class nblock_resnet(nn.Module):
         
     def forward(self, input):
         patch_means = torch.mean(input, dim=(2,3), keepdim=True)
+        input = input.clone()
         input -= patch_means
         return patch_means + self.model(input)
 

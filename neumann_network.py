@@ -5,7 +5,9 @@ import torch.optim as optim
 import torchvision.utils as vutils
 
 from model import *
-#from utils import *
+from blurs import *
+from operators import *
+
 
 
 class NeumannNet():
@@ -16,6 +18,8 @@ class NeumannNet():
         self.noise_sigma = args.noise_sigma
         print(f'Undersample rate is: {args.rate}')
         
+        self.forward_opr = GaussianBlur(sigma=5.0, kernel_size=1, n_channels=1, n_spatial_dimensions=2).to(self.device)
+        self.measurement_process = OperatorPlusNoise(self.forward_opr, noise_sigma=self.noise_sigma)
         # if args.beam == 'parallel':
         #     self.opr = Operators(args.size, args.angles, args.rate, device=device)
         # elif args.beam == 'fan':
@@ -59,6 +63,7 @@ class NeumannNet():
     
     # compute A = (I - eta*X^T X - eta*R), the whole operator norm ||A|| should be <1.
     def run_block(self, beta):
+        linear_component = (beta - self.eta*self.forward_opr.gramian(beta) + self.network_input).clone()
         #linear_component = beta - self.eta*self.opr.forward_gramian(beta)  # I - eta*X^T X()
         linear_component = beta - self.eta*beta
         regulariser = self.resnet(beta)  # R()
@@ -83,13 +88,14 @@ class NeumannNet():
                 
                 true_beta = data[0].clone().to(self.device)  # Ground Truth Reconstruction 0~1
                 #true_sinogram = self.opr.forward_radon(true_beta)  # 0~1
-                y_measurement = true_beta + self.noise_sigma * torch.randn_like(true_beta)
+                y = self.measurement_process(true_beta).clone()
+                #y_measurement = true_beta + self.noise_sigma * torch.randn_like(true_beta)
                 #true_sinogram = true_beta # Observed y after forward mapping. Test case to have the identity matrix
                 
                 #self.network_input = self.opr.forward_adjoint(self.opr.undersample_model(true_sinogram))
                 #self.network_input = true_sinogram#[:,:,::self.sample_rate,:]
-                self.network_input = y_measurement
-                self.network_input *= self.eta
+                self.network_input = self.forward_opr.adjoint(y).clone()#[:,:,::self.sample_rate,:]
+                self.network_input = self.network_input * self.eta
                 beta = self.network_input.clone()
                 self.neumann_sum = beta.clone()
 

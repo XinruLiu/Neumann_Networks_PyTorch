@@ -4,10 +4,10 @@ import math
 #import cv2
 import torch
 import torch.nn.functional as torchfunc
-from operator import LinearOperator
+from operators import LinearOperator
 
 class GaussianBlur(LinearOperator):
-    def __init__(self, sigma, kernel_size=5, n_channels=3, n_spatial_dimensions = 2):
+    def __init__(self, sigma, kernel_size=1, n_channels=1, n_spatial_dimensions = 2):
         super(GaussianBlur, self).__init__()
         self.groups = n_channels
         if isinstance(kernel_size, numbers.Number):
@@ -24,7 +24,7 @@ class GaussianBlur(LinearOperator):
         meshgrids = torch.meshgrid([torch.arange(size, dtype=torch.float32) for size in kernel_size])
         for size, mgrid in zip(kernel_size, meshgrids):
             mean = (size - 1) / 2
-            kernel *= torch.exp(-((mgrid - mean) / sigma) ** 2 / 2)
+            kernel = kernel * torch.exp(-((mgrid - mean) / sigma) ** 2 / 2)
 
         # Make sure norm of values in gaussian kernel equals 1.
         kernel = kernel / torch.sum(kernel)
@@ -39,3 +39,4 @@ class GaussianBlur(LinearOperator):
 
     def adjoint(self, x):
         return torchfunc.conv2d(x, weight=self.gaussian_kernel, groups=self.groups, padding=self.padding)
+    

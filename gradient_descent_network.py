@@ -5,14 +5,8 @@ import torch.optim as optim
 import torchvision.utils as vutils
 
 from model import *
-from operator import *
-#from operator import LinearOperator
-import blurs
-import operators
-#from operator import OperatorPlusNoise
-
-#from operator import LinearOperator
-#from utils import *
+from blurs import *
+from operators import *
 
 
 class GradientDescentNet():
@@ -24,8 +18,8 @@ class GradientDescentNet():
         self.noise_sigma = args.noise_sigma
         print(f'Undersample rate is: {args.rate}')
 
-        self.forward_opr = blurs.GaussianBlur(sigma=5.0, kernel_size=5, n_channels=3, n_spatial_dimensions=2).to(self.device)
-        self.measurement_process = operators.OperatorPlusNoise(self.forward_opr, noise_sigma=self.noise_sigma)
+        self.forward_opr = GaussianBlur(sigma=5.0, kernel_size=1, n_channels=1, n_spatial_dimensions=2).to(self.device)
+        self.measurement_process = OperatorPlusNoise(self.forward_opr, noise_sigma=self.noise_sigma)
         ##self.linear_opr = LinearOperator()
         #self.noise_opr = OperatorPlusNoise()
         # if args.beam == 'parallel':
@@ -68,9 +62,9 @@ class GradientDescentNet():
         
     
     def run_block(self, beta):
-        linear_component = beta - self.eta*self.forward_opr.gramian(beta) + self.network_input
+        linear_component = (beta - self.eta*self.forward_opr.gramian(beta) + self.network_input).clone()
         #linear_component = beta - self.eta*beta + self.network_input
-        regulariser = self.resnet(beta)
+        regulariser = self.resnet(beta).clone()
         learned_component = -regulariser*self.eta
         beta = linear_component + learned_component
         return beta
@@ -90,19 +84,19 @@ class GradientDescentNet():
             for i, data in enumerate(self.dataloader):
                 self.resnet.zero_grad()
                 
-                true_beta = data[0].to(self.device)  # Ground Truth Reconstruction 0~1
+                true_beta = data[0].to(self.device).clone()  # Ground Truth Reconstruction 0~1
                 
-                y = self.measurement_process(true_beta)
+                y = self.measurement_process(true_beta).clone()
                 #y_measurement = true_beta + self.noise_sigma * torch.randn_like(true_beta)  # 0~1
                 #true_sinogram = true_beta # Observed y after forward mapping. Test case to have the identity matrix
 
                 #self.network_input = self.linear_opr.adjoint(y_measurement)
-                self.network_input = self.forward_opr.adjoint(y)#[:,:,::self.sample_rate,:]
-                self.network_input *= self.eta
-                beta = self.network_input
+                self.network_input = self.forward_opr.adjoint(y).clone()#[:,:,::self.sample_rate,:]
+                self.network_input = self.network_input * self.eta
+                beta = self.network_input.clone()
 
                 for _ in range(self.args.blocks):  # run iterations
-                    beta = self.run_block(beta)
+                    beta = self.run_block(beta).clone()
  
                 self.err = self.criterionL2(beta, true_beta)
                 self.err.backward()
